@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}vision-one-mxdr{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <div>
+        <a class="brand" href="{{ url_for('home') }}">vision-one-mxdr</a>
+        <div class="brand-sub">新版 MxDR 操作介面（第一版）</div>
+      </div>
+      <nav class="nav-links">
+        <a href="{{ url_for('home') }}">首頁</a>
+        <a href="{{ url_for('settings_page') }}">設定</a>
+        <a href="{{ url_for('query_page') }}">查詢</a>
+        <a href="{{ url_for('result_page') }}">結果說明</a>
+        <a href="{{ url_for('about_page') }}">關於</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-body">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

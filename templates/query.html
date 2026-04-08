@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}查詢 - vision-one-mxdr{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <section class="card">
+    <h1>查詢</h1>
+    <p class="muted">
+      第一版先建立查詢表單與結果流向。下一步可以把這裡對接到實際的 Vision One / MxDR API。
+    </p>
+
+    <form method="post" class="form-grid">
+      <label>
+        <span>查詢類型</span>
+        <select name="query_type">
+          {% for item in ['事件查詢', 'Workbench 查詢', 'Insight 查詢', '端點查詢'] %}
+            <option value="{{ item }}" {% if query_form.query_type == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        <span>時間範圍</span>
+        <select name="time_range">
+          {% for item in ['1h', '6h', '24h', '7d'] %}
+            <option value="{{ item }}" {% if query_form.time_range == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        <span>關鍵字</span>
+        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：powershell、rundll32、domain name">
+      </label>
+
+      <label>
+        <span>端點名稱</span>
+        <input type="text" name="endpoint_name" value="{{ query_form.endpoint_name }}" placeholder="例如：HOST-001">
+      </label>
+
+      <label class="full">
+        <span>備註</span>
+        <textarea name="note" rows="4" placeholder="可記錄此次查詢目的、IR 編號或調查背景">{{ query_form.note }}</textarea>
+      </label>
+
+      <div class="actions full">
+        <button type="submit">執行示範查詢</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>目前設定摘要</h2>
+    <ul>
+      <li>客戶名稱：{{ settings.customer_name or '未設定' }}</li>
+      <li>Region：{{ settings.vision_one_region or '未設定' }}</li>
+      <li>Vision One Token：{{ '已輸入' if settings.vision_one_token else '未輸入' }}</li>
+      <li>AI Endpoint Key：{{ '已輸入' if settings.ai_endpoint_key else '未輸入' }}</li>
+    </ul>
+
+    {% if result %}
+      <hr>
+      <h2>查詢結果（示範）</h2>
+      <p>{{ result.message }}</p>
+      <div class="result-box">
+        <h3>查詢條件</h3>
+        <pre>{{ result.query_form | tojson(indent=2, ensure_ascii=False) }}</pre>
+      </div>
+      <div class="result-box">
+        <h3>模擬結果</h3>
+        <ul>
+          {% for item in result.mock_results %}
+            <li><strong>{{ item['標題'] }}</strong>：{{ item['內容'] }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <p class="muted">尚未執行查詢。送出表單後，這裡會顯示查詢摘要與結果。</p>
+    {% endif %}
+  </section>
+</div>

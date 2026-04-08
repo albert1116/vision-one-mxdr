@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}設定 - vision-one-mxdr{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>設定</h1>
+  <p class="muted">
+    這一頁用來輸入執行查詢時需要的參數。這些資料目前只會暫存在瀏覽工作階段（session），不會寫入專案檔案。
+  </p>
+
+  <form method="post" class="form-grid">
+    <label>
+      <span>客戶名稱</span>
+      <input type="text" name="customer_name" value="{{ settings.customer_name }}" placeholder="例如：某某客戶">
+    </label>
+
+    <label>
+      <span>Vision One Region</span>
+      <input type="text" name="vision_one_region" value="{{ settings.vision_one_region }}" placeholder="例如：SG / US / JP / TW">
+    </label>
+
+    <label class="full">
+      <span>Vision One API Token</span>
+      <textarea name="vision_one_token" rows="4" placeholder="需要時再貼上，預設不寫入檔案">{{ settings.vision_one_token }}</textarea>
+    </label>
+
+    <label class="full">
+      <span>AI Endpoint Key（選填）</span>
+      <textarea name="ai_endpoint_key" rows="3" placeholder="若之後要做 AI 分析可填入">{{ settings.ai_endpoint_key }}</textarea>
+    </label>
+
+    <div class="actions full">
+      <button type="submit">儲存目前工作階段設定</button>
+    </div>
+  </form>
+
+  <form method="post" action="{{ url_for('clear_settings') }}" class="inline-form">
+    <button type="submit" class="secondary">清除目前工作階段設定</button>
+  </form>
+</div>
