@@ -5,7 +5,7 @@
   <section class="card">
     <h1>查詢</h1>
     <p class="muted">
-      第二版已開始串接 Vision One API。現在先支援：<strong>端點查詢</strong> 與 <strong>Insight 查詢</strong>。
+      第三版已加入 <strong>Workbench 查詢</strong>。目前先支援：<strong>端點查詢</strong>、<strong>Insight 查詢</strong>、<strong>Workbench 查詢</strong>。
     </p>
 
     <form method="post" class="form-grid">
@@ -19,7 +19,7 @@
       </label>
 
       <label>
-        <span>時間範圍（Insight 用）</span>
+        <span>時間範圍</span>
         <select name="time_range">
           {% for item in ['1h', '6h', '24h', '7d'] %}
             <option value="{{ item }}" {% if query_form.time_range == item %}selected{% endif %}>{{ item }}</option>
@@ -29,7 +29,7 @@
 
       <label>
         <span>關鍵字 / Filter</span>
-        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：lastLoggedOnUser eq 'admin' 或 inProcess eq false">
+        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：inProcess eq false 或 severity eq 'high'">
       </label>
 
       <label>

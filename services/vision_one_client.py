@@ -131,3 +131,42 @@ class VisionOneClient:
             'raw': data,
             'appliedFilter': final_filter,
         }
+
+    def query_workbench_alerts(self, time_range: str = '24h', filter_string: str = ''):
+        now = datetime.now(timezone.utc)
+        if time_range.endswith('h'):
+            start_time = now - timedelta(hours=int(time_range[:-1]))
+        elif time_range.endswith('d'):
+            start_time = now - timedelta(days=int(time_range[:-1]))
+        else:
+            start_time = now - timedelta(hours=24)
+
+        params = {
+            'top': 100,
+        }
+
+        time_filter = f"createdDateTime gt {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} and createdDateTime le {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        final_filter = f'({filter_string}) and ({time_filter})' if filter_string else time_filter
+
+        data = self._get('/v3.0/workbench/alerts', params=params, extra_headers={'TMV1-Filter': final_filter})
+        items = data.get('items', [])
+
+        records = []
+        for item in items:
+            records.append({
+                'id': item.get('id', ''),
+                'alertProvider': item.get('alertProvider', ''),
+                'model': item.get('model', ''),
+                'severity': item.get('severity', ''),
+                'createdDateTime': item.get('createdDateTime', ''),
+                'updatedDateTime': item.get('updatedDateTime', ''),
+                'matchedIndicatorCount': item.get('matchedIndicatorCount', ''),
+            })
+
+        return {
+            'queryType': 'Workbench 查詢',
+            'totalCount': len(records),
+            'items': records,
+            'raw': data,
+            'appliedFilter': final_filter,
+        }

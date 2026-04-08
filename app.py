@@ -85,8 +85,14 @@ def query_page():
                     filter_string=query_form["keyword"],
                 )
 
+            elif query_form["query_type"] == "Workbench 查詢":
+                result = client.query_workbench_alerts(
+                    time_range=query_form["time_range"],
+                    filter_string=query_form["keyword"],
+                )
+
             else:
-                error_message = "目前第二版先支援：端點查詢、Insight 查詢。"
+                error_message = "目前第三版先支援：端點查詢、Insight 查詢、Workbench 查詢。"
 
         except VisionOneClientError as e:
             error_message = str(e)
