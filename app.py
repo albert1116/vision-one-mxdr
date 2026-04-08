@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from services.vision_one_client import VisionOneClient, VisionOneClientError
+from utils.exporters import export_json, export_csv
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-production"
@@ -12,6 +13,14 @@ def get_settings():
         "ai_endpoint_key": session.get("ai_endpoint_key", ""),
         "customer_name": session.get("customer_name", ""),
     }
+
+
+def get_client():
+    settings = get_settings()
+    return VisionOneClient(
+        token=settings.get("vision_one_token", ""),
+        region=settings.get("vision_one_region", ""),
+    )
 
 
 @app.route("/")
@@ -30,7 +39,6 @@ def settings_page():
         session["customer_name"] = request.form.get("customer_name", "").strip()
         flash("設定已暫存於目前瀏覽工作階段，未寫入磁碟。", "success")
         return redirect(url_for("settings_page"))
-
     return render_template("settings.html", settings=get_settings())
 
 
@@ -65,52 +73,74 @@ def query_page():
         }
 
         try:
-            client = VisionOneClient(
-                token=settings.get("vision_one_token", ""),
-                region=settings.get("vision_one_region", ""),
-            )
+            client = get_client()
+            query_type = query_form["query_type"]
 
-            if query_form["query_type"] == "端點查詢":
+            if query_type == "端點查詢":
                 filter_parts = []
                 if query_form["keyword"]:
                     filter_parts.append(query_form["keyword"])
                 if query_form["endpoint_name"]:
                     filter_parts.append(f"endpointName eq '{query_form['endpoint_name']}'")
-                filter_string = ' and '.join(filter_parts)
-                result = client.query_endpoints(filter_string=filter_string)
+                result = client.query_endpoints(filter_string=' and '.join(filter_parts))
 
-            elif query_form["query_type"] == "Insight 查詢":
-                result = client.query_insights(
-                    time_range=query_form["time_range"],
-                    filter_string=query_form["keyword"],
-                )
+            elif query_type == "Insight 查詢":
+                result = client.query_insights(query_form["time_range"], query_form["keyword"])
 
-            elif query_form["query_type"] == "Workbench 查詢":
-                result = client.query_workbench_alerts(
-                    time_range=query_form["time_range"],
-                    filter_string=query_form["keyword"],
-                )
+            elif query_type == "Workbench 查詢":
+                result = client.query_workbench_alerts(query_form["time_range"], query_form["keyword"])
+
+            elif query_type == "事件查詢":
+                result = client.query_events(query_form["time_range"], query_form["keyword"], query_form["endpoint_name"])
 
             else:
-                error_message = "目前第三版先支援：端點查詢、Insight 查詢、Workbench 查詢。"
+                error_message = "目前全功能初版支援：端點查詢、Insight 查詢、Workbench 查詢、事件查詢。"
+
+            if result:
+                session['last_result'] = result
 
         except VisionOneClientError as e:
             error_message = str(e)
         except Exception as e:
             error_message = f"查詢時發生未預期錯誤：{e}"
 
-    return render_template(
-        "query.html",
-        settings=settings,
-        query_form=query_form,
-        result=result,
-        error_message=error_message,
-    )
+    return render_template("query.html", settings=settings, query_form=query_form, result=result, error_message=error_message)
+
+
+@app.route('/detail/insight/<insight_id>')
+def insight_detail(insight_id):
+    try:
+        detail = get_client().get_insight_detail(insight_id)
+        return render_template('detail.html', title='Insight 詳細頁', detail=detail, detail_id=insight_id)
+    except Exception as e:
+        return render_template('detail.html', title='Insight 詳細頁', detail={'raw': {'error': str(e)}}, detail_id=insight_id)
+
+
+@app.route('/detail/alert/<alert_id>')
+def alert_detail(alert_id):
+    try:
+        detail = get_client().get_alert_detail(alert_id)
+        return render_template('detail.html', title='Workbench 詳細頁', detail=detail, detail_id=alert_id)
+    except Exception as e:
+        return render_template('detail.html', title='Workbench 詳細頁', detail={'raw': {'error': str(e)}}, detail_id=alert_id)
+
+
+@app.route('/export/json')
+def export_last_json():
+    result = session.get('last_result') or {'message': '尚無可匯出的查詢結果'}
+    return export_json(result, 'vision-one-mxdr-export.json')
+
+
+@app.route('/export/csv')
+def export_last_csv():
+    result = session.get('last_result') or {}
+    rows = result.get('items', []) if isinstance(result, dict) else []
+    return export_csv(rows, 'vision-one-mxdr-export.csv')
 
 
 @app.route("/result")
 def result_page():
-    return render_template("result.html", settings=get_settings())
+    return render_template("result.html", settings=get_settings(), last_result=session.get('last_result'))
 
 
 @app.route("/about")

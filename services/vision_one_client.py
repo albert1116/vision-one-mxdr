@@ -33,9 +33,7 @@ class VisionOneClient:
         self.base_url = base_url
         self.region = region
         self.timeout = timeout
-        self.headers = {
-            'Authorization': f'Bearer {token}'
-        }
+        self.headers = {'Authorization': f'Bearer {token}'}
 
     def _get(self, path: str, params=None, extra_headers=None):
         headers = dict(self.headers)
@@ -58,18 +56,21 @@ class VisionOneClient:
         except Exception as e:
             raise VisionOneClientError(f'API 回傳不是合法 JSON：{e}')
 
-    def query_endpoints(self, filter_string: str = ''):
-        params = {
-            'orderBy': 'agentGuid',
-            'top': 100,
-        }
-        extra_headers = {}
-        if filter_string:
-            extra_headers['TMV1-Filter'] = filter_string
+    def _time_filter(self, time_range: str, field_name: str = 'createdDateTime'):
+        now = datetime.now(timezone.utc)
+        if time_range.endswith('h'):
+            start_time = now - timedelta(hours=int(time_range[:-1]))
+        elif time_range.endswith('d'):
+            start_time = now - timedelta(days=int(time_range[:-1]))
+        else:
+            start_time = now - timedelta(hours=24)
+        return f"{field_name} gt {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} and {field_name} le {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
+    def query_endpoints(self, filter_string: str = ''):
+        params = {'orderBy': 'agentGuid', 'top': 100}
+        extra_headers = {'TMV1-Filter': filter_string} if filter_string else {}
         data = self._get('/v3.0/endpointSecurity/endpoints', params=params, extra_headers=extra_headers)
         items = data.get('items', [])
-
         records = []
         for item in items:
             raw_ips = item.get('ipAddresses', []) or []
@@ -84,34 +85,14 @@ class VisionOneClient:
                 'lastUsedIp': item.get('lastUsedIp', ''),
                 'isolationStatus': item.get('isolationStatus', ''),
             })
-
-        return {
-            'queryType': '端點查詢',
-            'totalCount': len(records),
-            'items': records,
-            'raw': data,
-        }
+        return {'queryType': '端點查詢', 'totalCount': len(records), 'items': records, 'raw': data}
 
     def query_insights(self, time_range: str = '24h', filter_string: str = ''):
-        now = datetime.now(timezone.utc)
-        if time_range.endswith('h'):
-            start_time = now - timedelta(hours=int(time_range[:-1]))
-        elif time_range.endswith('d'):
-            start_time = now - timedelta(days=int(time_range[:-1]))
-        else:
-            start_time = now - timedelta(hours=24)
-
-        params = {
-            'orderBy': 'createdDateTime desc',
-            'top': 50,
-        }
-
-        time_filter = f"createdDateTime gt {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} and createdDateTime le {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        params = {'orderBy': 'createdDateTime desc', 'top': 50}
+        time_filter = self._time_filter(time_range, 'createdDateTime')
         final_filter = f'({filter_string}) and ({time_filter})' if filter_string else time_filter
-
         data = self._get('/v3.0/workbench/insights', params=params, extra_headers={'TMV1-Filter': final_filter})
         items = data.get('items', [])
-
         records = []
         for item in items:
             records.append({
@@ -123,34 +104,14 @@ class VisionOneClient:
                 'indicatorCount': item.get('indicatorCount', 0),
                 'matchedHighlightCount': item.get('matchedHighlightCount', 0),
             })
-
-        return {
-            'queryType': 'Insight 查詢',
-            'totalCount': len(records),
-            'items': records,
-            'raw': data,
-            'appliedFilter': final_filter,
-        }
+        return {'queryType': 'Insight 查詢', 'totalCount': len(records), 'items': records, 'raw': data, 'appliedFilter': final_filter}
 
     def query_workbench_alerts(self, time_range: str = '24h', filter_string: str = ''):
-        now = datetime.now(timezone.utc)
-        if time_range.endswith('h'):
-            start_time = now - timedelta(hours=int(time_range[:-1]))
-        elif time_range.endswith('d'):
-            start_time = now - timedelta(days=int(time_range[:-1]))
-        else:
-            start_time = now - timedelta(hours=24)
-
-        params = {
-            'top': 100,
-        }
-
-        time_filter = f"createdDateTime gt {start_time.strftime('%Y-%m-%dT%H:%M:%SZ')} and createdDateTime le {now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        params = {'top': 100}
+        time_filter = self._time_filter(time_range, 'createdDateTime')
         final_filter = f'({filter_string}) and ({time_filter})' if filter_string else time_filter
-
         data = self._get('/v3.0/workbench/alerts', params=params, extra_headers={'TMV1-Filter': final_filter})
         items = data.get('items', [])
-
         records = []
         for item in items:
             records.append({
@@ -162,11 +123,58 @@ class VisionOneClient:
                 'updatedDateTime': item.get('updatedDateTime', ''),
                 'matchedIndicatorCount': item.get('matchedIndicatorCount', ''),
             })
+        return {'queryType': 'Workbench 查詢', 'totalCount': len(records), 'items': records, 'raw': data, 'appliedFilter': final_filter}
 
-        return {
-            'queryType': 'Workbench 查詢',
-            'totalCount': len(records),
-            'items': records,
-            'raw': data,
-            'appliedFilter': final_filter,
+    def query_events(self, time_range: str = '24h', filter_string: str = '', endpoint_name: str = ''):
+        params = {
+            'startDateTime': '',
+            'endDateTime': '',
+            'top': 100,
+            'select': 'endpointHostName,parentFilePath,parentCmd,processFilePath,processCmd,objectFilePath,eventSubName,eventSubId,ruleName,src,dst,dpt,spt'
         }
+
+        now = datetime.now(timezone.utc)
+        if time_range.endswith('h'):
+            start_time = now - timedelta(hours=int(time_range[:-1]))
+        elif time_range.endswith('d'):
+            start_time = now - timedelta(days=int(time_range[:-1]))
+        else:
+            start_time = now - timedelta(hours=24)
+
+        params['startDateTime'] = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        params['endDateTime'] = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        criteria_parts = []
+        if endpoint_name:
+            criteria_parts.append(f'endpointHostName:{endpoint_name}')
+        if filter_string:
+            criteria_parts.append(filter_string)
+        criteria = ' AND '.join(criteria_parts) if criteria_parts else '*'
+
+        data = self._get('/v3.0/search/endpointActivities', params=params, extra_headers={'TMV1-Query': criteria})
+        items = data.get('items', [])
+        records = []
+        for item in items:
+            records.append({
+                'endpointHostName': item.get('endpointHostName', ''),
+                'processFilePath': item.get('processFilePath', ''),
+                'processCmd': item.get('processCmd', ''),
+                'objectFilePath': item.get('objectFilePath', ''),
+                'eventSubName': item.get('eventSubName', ''),
+                'ruleName': item.get('ruleName', ''),
+                'src': item.get('src', ''),
+                'dst': item.get('dst', ''),
+            })
+        return {'queryType': '事件查詢', 'totalCount': len(records), 'items': records, 'raw': data, 'appliedFilter': criteria}
+
+    def get_insight_detail(self, insight_id: str):
+        if not insight_id:
+            raise VisionOneClientError('缺少 Insight ID。')
+        data = self._get(f'/v3.0/workbench/insights/{insight_id}')
+        return {'detailType': 'Insight 詳細資料', 'raw': data}
+
+    def get_alert_detail(self, alert_id: str):
+        if not alert_id:
+            raise VisionOneClientError('缺少 Alert ID。')
+        data = self._get(f'/v3.0/workbench/alerts/{alert_id}')
+        return {'detailType': 'Workbench 詳細資料', 'raw': data}

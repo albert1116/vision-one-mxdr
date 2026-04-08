@@ -5,7 +5,7 @@
   <section class="card">
     <h1>查詢</h1>
     <p class="muted">
-      第三版已加入 <strong>Workbench 查詢</strong>。目前先支援：<strong>端點查詢</strong>、<strong>Insight 查詢</strong>、<strong>Workbench 查詢</strong>。
+      全功能初版目前已支援：<strong>端點查詢</strong>、<strong>Insight 查詢</strong>、<strong>Workbench 查詢</strong>、<strong>事件查詢</strong>。
     </p>
 
     <form method="post" class="form-grid">
@@ -28,12 +28,12 @@
       </label>
 
       <label>
-        <span>關鍵字 / Filter</span>
-        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：inProcess eq false 或 severity eq 'high'">
+        <span>關鍵字 / Filter / Query</span>
+        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：severity eq 'high'、inProcess eq false、powershell">
       </label>
 
       <label>
-        <span>端點名稱（端點查詢用）</span>
+        <span>端點名稱</span>
         <input type="text" name="endpoint_name" value="{{ query_form.endpoint_name }}" placeholder="例如：HOST-001">
       </label>
 
@@ -67,9 +67,14 @@
       <h2>{{ result.queryType }}結果</h2>
       <p>共取得 <strong>{{ result.totalCount }}</strong> 筆資料。</p>
 
+      <div class="actions">
+        <a class="button-link" href="{{ url_for('export_last_json') }}">匯出 JSON</a>
+        <a class="button-link secondary-link" href="{{ url_for('export_last_csv') }}">匯出 CSV</a>
+      </div>
+
       {% if result.appliedFilter %}
         <div class="result-box">
-          <h3>實際套用的 Filter</h3>
+          <h3>實際套用條件</h3>
           <pre>{{ result.appliedFilter }}</pre>
         </div>
       {% endif %}
@@ -84,6 +89,7 @@
                   {% for key in result.items[0].keys() %}
                     <th>{{ key }}</th>
                   {% endfor %}
+                  <th>詳細頁</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,6 +98,15 @@
                     {% for value in row.values() %}
                       <td>{{ value }}</td>
                     {% endfor %}
+                    <td>
+                      {% if result.queryType == 'Insight 查詢' and row.id %}
+                        <a href="{{ url_for('insight_detail', insight_id=row.id) }}">Insight 詳細</a>
+                      {% elif result.queryType == 'Workbench 查詢' and row.id %}
+                        <a href="{{ url_for('alert_detail', alert_id=row.id) }}">WB 詳細</a>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -107,7 +122,7 @@
         <pre>{{ result.raw | tojson(indent=2) }}</pre>
       </div>
     {% else %}
-      <p class="muted">尚未執行查詢。送出表單後，這裡會顯示真實 API 結果或錯誤訊息。</p>
+      <p class="muted">尚未執行查詢。送出表單後，這裡會顯示真實 API 結果、匯出功能與詳細頁連結。</p>
     {% endif %}
   </section>
 </div>

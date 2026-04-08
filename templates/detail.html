@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - vision-one-mxdr{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ title }}</h1>
+  <p class="muted">ID：{{ detail_id }}</p>
+  <p>這一頁是全功能初版的詳細頁骨架，目前先提供原始 JSON 檢視，後續可再補表格整理、Mermaid、AI 摘要與關聯分析。</p>
+  <div class="result-box">
+    <pre>{{ detail.raw | tojson(indent=2) }}</pre>
+  </div>
+</div>
+{% endblock %}

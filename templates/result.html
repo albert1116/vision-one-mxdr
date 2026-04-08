@@ -2,17 +2,22 @@
 {% block title %}結果說明 - vision-one-mxdr{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>結果頁規劃</h1>
-  <p>
-    這一頁目前先放規劃說明。後續可放：
-  </p>
+  <h1>結果頁</h1>
+  <p>這一頁用來集中說明目前查詢結果的檢視與匯出方式。</p>
   <ul>
-    <li>查詢結果表格</li>
-    <li>JSON 原始輸出檢視</li>
-    <li>Workbench / Insight 詳細資料</li>
-    <li>匯出 HTML / CSV / JSON</li>
-    <li>AI 分析摘要與建議</li>
+    <li>查詢完成後可在查詢頁直接預覽結果</li>
+    <li>可匯出 JSON</li>
+    <li>可匯出 CSV</li>
+    <li>Insight / Workbench 結果可進入詳細頁骨架</li>
   </ul>
-  <p class="muted">目前 session 中的客戶名稱：{{ settings.customer_name or '未設定' }}</p>
+
+  {% if last_result %}
+    <div class="result-box">
+      <h3>最近一次查詢摘要</h3>
+      <pre>{{ last_result | tojson(indent=2) }}</pre>
+    </div>
+  {% else %}
+    <p class="muted">目前尚無查詢結果。</p>
+  {% endif %}
 </div>
 {% endblock %}
