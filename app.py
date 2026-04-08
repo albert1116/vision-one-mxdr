@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from services.vision_one_client import VisionOneClient, VisionOneClientError
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-production"
@@ -45,8 +46,9 @@ def clear_settings():
 def query_page():
     settings = get_settings()
     result = None
+    error_message = None
     query_form = {
-        "query_type": "事件查詢",
+        "query_type": "端點查詢",
         "time_range": "24h",
         "keyword": "",
         "endpoint_name": "",
@@ -55,35 +57,49 @@ def query_page():
 
     if request.method == "POST":
         query_form = {
-            "query_type": request.form.get("query_type", "事件查詢"),
+            "query_type": request.form.get("query_type", "端點查詢"),
             "time_range": request.form.get("time_range", "24h"),
             "keyword": request.form.get("keyword", "").strip(),
             "endpoint_name": request.form.get("endpoint_name", "").strip(),
             "note": request.form.get("note", "").strip(),
         }
 
-        result = {
-            "status": "success",
-            "message": "這是第一版介面示範。目前先保留查詢流程與欄位，下一步再串接實際 Vision One API。",
-            "settings_summary": {
-                "customer_name": settings.get("customer_name") or "未設定",
-                "vision_one_region": settings.get("vision_one_region") or "未設定",
-                "vision_one_token": "已輸入" if settings.get("vision_one_token") else "未輸入",
-            },
-            "query_form": query_form,
-            "mock_results": [
-                {
-                    "標題": "查詢流程已建立",
-                    "內容": "目前頁面已可接收查詢條件，下一版可直接串 Vision One API。",
-                },
-                {
-                    "標題": "敏感資訊處理",
-                    "內容": "Token 與 Key 僅暫存在 session，不會寫入專案檔案。",
-                },
-            ],
-        }
+        try:
+            client = VisionOneClient(
+                token=settings.get("vision_one_token", ""),
+                region=settings.get("vision_one_region", ""),
+            )
 
-    return render_template("query.html", settings=settings, query_form=query_form, result=result)
+            if query_form["query_type"] == "端點查詢":
+                filter_parts = []
+                if query_form["keyword"]:
+                    filter_parts.append(query_form["keyword"])
+                if query_form["endpoint_name"]:
+                    filter_parts.append(f"endpointName eq '{query_form['endpoint_name']}'")
+                filter_string = ' and '.join(filter_parts)
+                result = client.query_endpoints(filter_string=filter_string)
+
+            elif query_form["query_type"] == "Insight 查詢":
+                result = client.query_insights(
+                    time_range=query_form["time_range"],
+                    filter_string=query_form["keyword"],
+                )
+
+            else:
+                error_message = "目前第二版先支援：端點查詢、Insight 查詢。"
+
+        except VisionOneClientError as e:
+            error_message = str(e)
+        except Exception as e:
+            error_message = f"查詢時發生未預期錯誤：{e}"
+
+    return render_template(
+        "query.html",
+        settings=settings,
+        query_form=query_form,
+        result=result,
+        error_message=error_message,
+    )
 
 
 @app.route("/result")
@@ -97,4 +113,4 @@ def about_page():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

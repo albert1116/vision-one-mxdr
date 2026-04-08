@@ -188,3 +188,9 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { border: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: top; }
+thead { background: #11151a; }

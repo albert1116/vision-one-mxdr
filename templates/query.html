@@ -5,21 +5,21 @@
   <section class="card">
     <h1>查詢</h1>
     <p class="muted">
-      第一版先建立查詢表單與結果流向。下一步可以把這裡對接到實際的 Vision One / MxDR API。
+      第二版已開始串接 Vision One API。現在先支援：<strong>端點查詢</strong> 與 <strong>Insight 查詢</strong>。
     </p>
 
     <form method="post" class="form-grid">
       <label>
         <span>查詢類型</span>
         <select name="query_type">
-          {% for item in ['事件查詢', 'Workbench 查詢', 'Insight 查詢', '端點查詢'] %}
+          {% for item in ['端點查詢', 'Insight 查詢', 'Workbench 查詢', '事件查詢'] %}
             <option value="{{ item }}" {% if query_form.query_type == item %}selected{% endif %}>{{ item }}</option>
           {% endfor %}
         </select>
       </label>
 
       <label>
-        <span>時間範圍</span>
+        <span>時間範圍（Insight 用）</span>
         <select name="time_range">
           {% for item in ['1h', '6h', '24h', '7d'] %}
             <option value="{{ item }}" {% if query_form.time_range == item %}selected{% endif %}>{{ item }}</option>
@@ -28,12 +28,12 @@
       </label>
 
       <label>
-        <span>關鍵字</span>
-        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：powershell、rundll32、domain name">
+        <span>關鍵字 / Filter</span>
+        <input type="text" name="keyword" value="{{ query_form.keyword }}" placeholder="例如：lastLoggedOnUser eq 'admin' 或 inProcess eq false">
       </label>
 
       <label>
-        <span>端點名稱</span>
+        <span>端點名稱（端點查詢用）</span>
         <input type="text" name="endpoint_name" value="{{ query_form.endpoint_name }}" placeholder="例如：HOST-001">
       </label>
 
@@ -43,7 +43,7 @@
       </label>
 
       <div class="actions full">
-        <button type="submit">執行示範查詢</button>
+        <button type="submit">執行查詢</button>
       </div>
     </form>
   </section>
@@ -57,24 +57,58 @@
       <li>AI Endpoint Key：{{ '已輸入' if settings.ai_endpoint_key else '未輸入' }}</li>
     </ul>
 
+    {% if error_message %}
+      <hr>
+      <div class="flash">{{ error_message }}</div>
+    {% endif %}
+
     {% if result %}
       <hr>
-      <h2>查詢結果（示範）</h2>
-      <p>{{ result.message }}</p>
+      <h2>{{ result.queryType }}結果</h2>
+      <p>共取得 <strong>{{ result.totalCount }}</strong> 筆資料。</p>
+
+      {% if result.appliedFilter %}
+        <div class="result-box">
+          <h3>實際套用的 Filter</h3>
+          <pre>{{ result.appliedFilter }}</pre>
+        </div>
+      {% endif %}
+
       <div class="result-box">
-        <h3>查詢條件</h3>
-        <pre>{{ result.query_form | tojson(indent=2, ensure_ascii=False) }}</pre>
+        <h3>結果預覽</h3>
+        {% if result.items %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  {% for key in result.items[0].keys() %}
+                    <th>{{ key }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in result.items[:20] %}
+                  <tr>
+                    {% for value in row.values() %}
+                      <td>{{ value }}</td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="muted">查詢成功，但目前沒有符合條件的資料。</p>
+        {% endif %}
       </div>
+
       <div class="result-box">
-        <h3>模擬結果</h3>
-        <ul>
-          {% for item in result.mock_results %}
-            <li><strong>{{ item['標題'] }}</strong>：{{ item['內容'] }}</li>
-          {% endfor %}
-        </ul>
+        <h3>原始 JSON（節錄）</h3>
+        <pre>{{ result.raw | tojson(indent=2) }}</pre>
       </div>
     {% else %}
-      <p class="muted">尚未執行查詢。送出表單後，這裡會顯示查詢摘要與結果。</p>
+      <p class="muted">尚未執行查詢。送出表單後，這裡會顯示真實 API 結果或錯誤訊息。</p>
     {% endif %}
   </section>
 </div>
+{% endblock %}
